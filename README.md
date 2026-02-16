@@ -209,7 +209,22 @@ pytest
 
 ---
 
-## 8. 可扩展方向（建议）
+
+---
+
+## 8. Jupyter Notebook 使用（推荐）
+
+已提供可直接运行的 Notebook：
+
+- `notebooks/visual_aid_pipeline.ipynb`
+
+使用方式：
+
+1. 在仓库根目录启动 Jupyter。  
+2. 打开 `notebooks/visual_aid_pipeline.ipynb`。  
+3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
+
+## 9. 可扩展方向（建议）
 
 - 增加病理视觉模型接口（如视野缺损、中央暗点、对比敏感度函数衰减）。  
 - 引入实时视频流处理，支持逐帧渲染与时延评估。  
