@@ -232,7 +232,7 @@ pytest
 2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
-说明：即使你误先运行“导入渲染管线函数”单元，该单元也会自动修复 `sys.path` 并重试导入，避免 `ModuleNotFoundError`。
+说明：Notebook 现已内置完整渲染管线函数实现（`load_image` 到 `render_pipeline`），可不依赖外部模块独立运行，便于调试和学习。
 
 ## 9. 可扩展方向（建议）
 
