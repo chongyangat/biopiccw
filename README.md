@@ -228,8 +228,8 @@ pytest
 
 使用方式：
 
-1. 在仓库根目录启动 Jupyter。  
-2. 打开 `notebooks/visual_aid_pipeline.ipynb`。  
+1. 在任意目录启动 Jupyter 并打开 `notebooks/visual_aid_pipeline.ipynb`。  
+2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
 ## 9. 可扩展方向（建议）
