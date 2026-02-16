@@ -5,58 +5,59 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from PIL import Image, ImageEnhance
+import cv2
+from skimage import exposure, filters
 
 
-def load_image(image_path: str | Path) -> Image.Image:
-    """Load an image from disk."""
-    return Image.open(image_path).convert("RGB")
+def load_image(image_path: str | Path):
+    """Load an image from disk as RGB."""
+    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+    if image is None:
+        raise FileNotFoundError(f"Cannot read image: {image_path}")
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
-def apply_magnification(image: Image.Image, magnification_factor: float) -> Image.Image:
+def apply_magnification(image, magnification_factor: float):
     """Resize an image according to magnification factor."""
     if magnification_factor <= 0:
         raise ValueError("magnification_factor must be > 0")
 
-    width, height = image.size
-    new_size = (int(width * magnification_factor), int(height * magnification_factor))
-    new_size = (max(1, new_size[0]), max(1, new_size[1]))
-    return image.resize(new_size, Image.Resampling.LANCZOS)
+    height, width = image.shape[:2]
+    new_size = (max(1, int(width * magnification_factor)), max(1, int(height * magnification_factor)))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_LANCZOS4)
 
 
-def enhance_contrast(image: Image.Image, contrast_factor: float) -> Image.Image:
-    """Enhance image contrast."""
+def enhance_contrast(image, contrast_factor: float):
+    """Enhance image contrast via linear scaling."""
     if contrast_factor < 0:
         raise ValueError("contrast_factor must be >= 0")
 
-    enhancer = ImageEnhance.Contrast(image)
-    return enhancer.enhance(contrast_factor)
+    return cv2.convertScaleAbs(image, alpha=contrast_factor, beta=0)
 
 
-def sharpen_image(image: Image.Image, sharpness_factor: float) -> Image.Image:
+def sharpen_image(image, sharpness_factor: float):
     """Sharpen image edges and details."""
     if sharpness_factor < 0:
         raise ValueError("sharpness_factor must be >= 0")
 
-    enhancer = ImageEnhance.Sharpness(image)
-    return enhancer.enhance(sharpness_factor)
+    return filters.unsharp_mask(
+        image,
+        radius=1.0,
+        amount=sharpness_factor,
+        preserve_range=True,
+        channel_axis=-1,
+    )
 
 
-def adjust_dynamic_range(image: Image.Image, gamma: float) -> Image.Image:
+def adjust_dynamic_range(image, gamma: float):
     """Apply gamma correction to map dynamic range."""
     if gamma <= 0:
         raise ValueError("gamma must be > 0")
 
-    base_lut = [min(255, int((x / 255) ** (1 / gamma) * 255)) for x in range(256)]
-
-    # Pillow 对多通道图像（如 RGB）要求 LUT 长度为 256 * 通道数。
-    # 例如 RGB 需要 768 项，否则会报 ValueError: wrong number of lut entries。
-    bands = len(image.getbands()) if hasattr(image, "getbands") else 1
-    lut = base_lut * max(1, bands)
-    return image.point(lut)
+    return exposure.adjust_gamma(image, gamma=gamma)
 
 
-def simulate_latency(image: Image.Image, delay_seconds: float) -> Image.Image:
+def simulate_latency(image, delay_seconds: float):
     """Simulate device latency."""
     if delay_seconds < 0:
         raise ValueError("delay_seconds must be >= 0")
@@ -72,7 +73,7 @@ def render_pipeline(
     sharpness_factor: float,
     gamma: float,
     delay_seconds: float,
-) -> Image.Image:
+):
     """Run the complete rendering pipeline and return the output image."""
     image = load_image(image_path)
     image = apply_magnification(image, magnification_factor)
@@ -83,8 +84,11 @@ def render_pipeline(
     return image
 
 
-def save_image(image: Image.Image, output_path: str | Path) -> None:
-    """Save image to disk."""
+def save_image(image, output_path: str | Path) -> None:
+    """Save RGB image to disk."""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    image.save(output)
+    bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    ok = cv2.imwrite(str(output), bgr)
+    if not ok:
+        raise IOError(f"Failed to save image: {output}")

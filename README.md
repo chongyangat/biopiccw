@@ -25,14 +25,15 @@
 
 ### 3.1 图像加载与输入
 
-使用 PIL 加载输入图像，作为后续渲染处理的起点。
+使用 OpenCV（`cv2`）加载输入图像，作为后续渲染处理的起点。
 
 ```python
-from PIL import Image
+import cv2
 
 
 def load_image(image_path):
-    return Image.open(image_path).convert("RGB")
+    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 ```
 
 ---
@@ -43,38 +44,39 @@ def load_image(image_path):
 
 ```python
 def apply_magnification(image, magnification_factor):
-    width, height = image.size
+    height, width = image.shape[:2]
     new_size = (int(width * magnification_factor), int(height * magnification_factor))
-    return image.resize(new_size, Image.Resampling.LANCZOS)
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_LANCZOS4)
 ```
 
-> 说明：如使用旧版 Pillow，可将 `Image.Resampling.LANCZOS` 替换为兼容写法。
+> 说明：OpenCV 中 `resize` 的目标尺寸顺序为 `(width, height)`。
 
 ---
 
 ### 3.3 对比度增强（模拟设备对比度增强功能）
 
-通过 `PIL.ImageEnhance.Contrast` 增强图像对比度，提高视觉清晰度。
+通过 OpenCV 线性变换（`convertScaleAbs`）增强对比度，提高视觉清晰度。
 
 ```python
-from PIL import ImageEnhance
+import cv2
 
 
 def enhance_contrast(image, contrast_factor):
-    enhancer = ImageEnhance.Contrast(image)
-    return enhancer.enhance(contrast_factor)
+    return cv2.convertScaleAbs(image, alpha=contrast_factor, beta=0)
 ```
 
 ---
 
 ### 3.4 边缘锐化（模拟设备边缘增强功能）
 
-通过 `PIL.ImageEnhance.Sharpness` 提升图像边缘细节表现。
+通过 `scikit-image` 的 `unsharp_mask` 提升图像边缘细节表现。
 
 ```python
+from skimage import filters
+
+
 def sharpen_image(image, sharpness_factor):
-    enhancer = ImageEnhance.Sharpness(image)
-    return enhancer.enhance(sharpness_factor)
+    return filters.unsharp_mask(image, radius=1.0, amount=sharpness_factor, preserve_range=True, channel_axis=-1)
 ```
 
 ---
@@ -84,9 +86,11 @@ def sharpen_image(image, sharpness_factor):
 采用伽马校正（Gamma Correction）调整图像动态范围。
 
 ```python
+from skimage import exposure
+
+
 def adjust_dynamic_range(image, gamma):
-    lut = [min(255, int((x / 255) ** (1 / gamma) * 255)) for x in range(256)]
-    return image.point(lut)
+    return exposure.adjust_gamma(image, gamma=gamma)
 ```
 
 ---
@@ -155,7 +159,8 @@ def render_pipeline(
 
 ```python
 def save_image(image, output_path):
-    image.save(output_path)
+    bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(output_path, bgr)
 ```
 
 ---
@@ -202,9 +207,9 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ## 常见问题排查
 
-- 报错：`ValueError: wrong number of lut entries`  
-  原因：在 Pillow 中对 RGB 图像执行 `image.point(lut)` 时，LUT 长度需为 `256 * 通道数`（RGB 即 768）。  
-  处理：本项目已在 `adjust_dynamic_range` 中按通道自动扩展 LUT，请确保使用最新代码。
+- 报错：`ModuleNotFoundError: No module named cv2` 或 `No module named skimage`  
+  原因：当前 Python 环境未安装 OpenCV / scikit-image。  
+  处理：安装依赖后重试，例如 `pip install opencv-python scikit-image`。
 
 ---
 
@@ -232,7 +237,7 @@ pytest
 2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
-说明：Notebook 现已内置完整渲染管线函数实现（`load_image` 到 `render_pipeline`），可不依赖外部模块独立运行，便于调试和学习。
+说明：Notebook 现已内置基于 OpenCV + scikit-image 的完整渲染管线函数实现（`load_image` 到 `render_pipeline`），可不依赖外部模块独立运行，便于调试和学习。
 
 ## 9. 可扩展方向（建议）
 
