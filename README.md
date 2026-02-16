@@ -245,3 +245,17 @@ pytest
 - 引入实时视频流处理，支持逐帧渲染与时延评估。  
 - 增加客观图像质量指标（PSNR、SSIM）与任务表现指标联动分析。  
 - 封装参数配置（JSON/YAML），便于实验复现实验条件。
+
+---
+
+
+## 10. 使用你自己的测试图片（cv2/skimage 直接读取）
+
+可直接运行下面命令测试你提供的三通道 JPG：
+
+```bash
+PYTHONPATH=.:src python scripts/run_user_image_test.py --image "D:\\vrcontent\\biopiccw\\test.jpg" --output "user_test_output.jpg"
+```
+
+脚本会分别用 `cv2.imread` 与 `skimage.io.imread` 读取图像，然后执行完整渲染管线并保存输出。
+

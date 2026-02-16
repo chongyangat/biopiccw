@@ -1,3 +1,3 @@
-from . import exposure, filters
+from . import exposure, filters, io
 
-__all__ = ["exposure", "filters"]
+__all__ = ["exposure", "filters", "io"]
