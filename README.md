@@ -238,6 +238,7 @@ pytest
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
 说明：Notebook 现已内置基于 OpenCV + scikit-image 的完整渲染管线函数实现（`load_image` 到 `render_pipeline`），可不依赖外部模块独立运行，便于调试和学习。
+说明：Notebook 默认直接读取你提供的图片路径 `D:\\vrcontent\\biopiccw\\test.jpg`，并在运行前分别用 `cv2` 与 `skimage.io` 做读取检查。
 
 ## 9. 可扩展方向（建议）
 
