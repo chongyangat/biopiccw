@@ -200,6 +200,14 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ---
 
+## 常见问题排查
+
+- 报错：`ValueError: wrong number of lut entries`  
+  原因：在 Pillow 中对 RGB 图像执行 `image.point(lut)` 时，LUT 长度需为 `256 * 通道数`（RGB 即 768）。  
+  处理：本项目已在 `adjust_dynamic_range` 中按通道自动扩展 LUT，请确保使用最新代码。
+
+---
+
 ## 7. 测试
 
 ```bash

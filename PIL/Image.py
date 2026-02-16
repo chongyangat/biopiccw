@@ -21,6 +21,11 @@ class Image:
     def size(self) -> tuple[int, int]:
         return self._size
 
+    def getbands(self) -> tuple[str, ...]:
+        if self.mode == "RGB":
+            return ("R", "G", "B")
+        return tuple(self.mode)
+
     @staticmethod
     def new(mode: str, size: tuple[int, int], color: tuple[int, int, int] = (0, 0, 0)) -> "Image":
         width, height = size
@@ -62,10 +67,19 @@ class Image:
 
     def point(self, lut: Iterable[int]) -> "Image":
         table = list(lut)
-        if len(table) != 256:
-            raise ValueError("LUT must have 256 values")
+        bands = len(self.getbands())
+        if len(table) == 256:
+            channel_luts = [table] * bands
+        elif len(table) == 256 * bands:
+            channel_luts = [table[i * 256 : (i + 1) * 256] for i in range(bands)]
+        else:
+            raise ValueError("wrong number of lut entries")
+
         out = self.copy()
-        out._pixels = [tuple(table[c] for c in px) for px in self._pixels]
+        out._pixels = [
+            tuple(channel_luts[i][c] for i, c in enumerate(px))
+            for px in self._pixels
+        ]
         return out
 
     def save(self, path: str | Path) -> None:

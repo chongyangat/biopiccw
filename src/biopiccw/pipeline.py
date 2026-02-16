@@ -47,7 +47,12 @@ def adjust_dynamic_range(image: Image.Image, gamma: float) -> Image.Image:
     if gamma <= 0:
         raise ValueError("gamma must be > 0")
 
-    lut = [min(255, int((x / 255) ** (1 / gamma) * 255)) for x in range(256)]
+    base_lut = [min(255, int((x / 255) ** (1 / gamma) * 255)) for x in range(256)]
+
+    # Pillow 对多通道图像（如 RGB）要求 LUT 长度为 256 * 通道数。
+    # 例如 RGB 需要 768 项，否则会报 ValueError: wrong number of lut entries。
+    bands = len(image.getbands()) if hasattr(image, "getbands") else 1
+    lut = base_lut * max(1, bands)
     return image.point(lut)
 
 

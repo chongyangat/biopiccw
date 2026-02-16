@@ -73,3 +73,23 @@ def test_invalid_params_raise(tmp_path: Path, kwargs: dict) -> None:
 
     with pytest.raises(ValueError):
         render_pipeline(**params)
+
+
+def test_adjust_dynamic_range_expands_lut_for_rgb() -> None:
+    class DummyImage:
+        def __init__(self) -> None:
+            self.received_lut = None
+
+        def getbands(self):
+            return ("R", "G", "B")
+
+        def point(self, lut):
+            self.received_lut = list(lut)
+            return self
+
+    image = DummyImage()
+    out = adjust_dynamic_range(image, 2.2)
+
+    assert out is image
+    assert image.received_lut is not None
+    assert len(image.received_lut) == 256 * 3
