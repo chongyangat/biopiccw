@@ -1,0 +1,11 @@
+name: visual_sim
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - scikit-image
+  - pytest
+  - pip
+  - pip:
+      - -e .
