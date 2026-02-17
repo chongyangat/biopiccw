@@ -213,7 +213,26 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ---
 
-## 7. 测试
+## 7. 环境配置（Conda，推荐）
+
+为避免本地同名文件影响第三方库导入，建议使用全新 Conda 环境运行：
+
+```bash
+conda create -n visual_sim python=3.10 -y
+conda activate visual_sim
+conda install -c conda-forge opencv scikit-image numpy pytest -y
+pip install -e .
+```
+
+验证导入：
+
+```bash
+python -c "import cv2, skimage, numpy; print(cv2.__version__)"
+```
+
+---
+
+## 8. 测试
 
 ```bash
 pip install -e . pytest
@@ -225,7 +244,7 @@ pytest
 
 ---
 
-## 8. Jupyter Notebook 使用（推荐）
+## 9. Jupyter Notebook 使用（推荐）
 
 已提供可直接运行的 Notebook：
 
@@ -237,10 +256,10 @@ pytest
 2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
-说明：Notebook 现已内置基于 OpenCV + scikit-image 的完整渲染管线函数实现（`load_image` 到 `render_pipeline`），可不依赖外部模块独立运行，便于调试和学习。
+说明：Notebook 现已内置基于 OpenCV + scikit-image 的完整渲染管线函数实现（`load_image` 到 `render_pipeline`），但仍以第三方库 `opencv` / `scikit-image` 的真实安装为准。
 说明：Notebook 默认直接读取你提供的图片路径 `D:\\vrcontent\\biopiccw\\test.jpg`，并在运行前分别用 `cv2` 与 `skimage.io` 做读取检查。
 
-## 9. 可扩展方向（建议）
+## 10. 可扩展方向（建议）
 
 - 增加病理视觉模型接口（如视野缺损、中央暗点、对比敏感度函数衰减）。  
 - 引入实时视频流处理，支持逐帧渲染与时延评估。  
@@ -250,7 +269,7 @@ pytest
 ---
 
 
-## 10. 使用你自己的测试图片（cv2/skimage 直接读取）
+## 11. 使用你自己的测试图片（cv2/skimage 直接读取）
 
 可直接运行下面命令测试你提供的三通道 JPG：
 

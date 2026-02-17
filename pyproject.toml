@@ -9,6 +9,7 @@ description = "Visual-aid rendering pipeline simulation in Python"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+  "numpy",
   "opencv-python",
   "scikit-image",
 ]

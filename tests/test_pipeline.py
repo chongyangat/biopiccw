@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import pytest
-import cv2
-from PIL import Image
+
+cv2 = pytest.importorskip("cv2")
+np = pytest.importorskip("numpy")
+pytest.importorskip("skimage")
 
 from biopiccw.pipeline import (
     adjust_dynamic_range,
@@ -13,21 +15,23 @@ from biopiccw.pipeline import (
 
 
 def make_test_image(path: Path, size=(20, 10), color=(120, 80, 40)) -> None:
-    # Use PIL shim for deterministic local image creation; pipeline itself uses cv2/skimage APIs.
-    image = Image.new("RGB", size=size, color=color)
-    image.save(path)
+    h, w = size[1], size[0]
+    image = np.zeros((h, w, 3), dtype=np.uint8)
+    image[:, :] = color
+    cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
 
 
 def test_apply_magnification_changes_size() -> None:
-    image = cv2.CVImage(Image.new("RGB", size=(10, 10), color=(100, 100, 100)))
+    image = np.zeros((10, 10, 3), dtype=np.uint8)
     out = apply_magnification(image, 1.5)
     assert out.shape[:2] == (15, 15)
 
 
 def test_adjust_dynamic_range_gamma_identity_approx() -> None:
-    image = cv2.CVImage(Image.new("RGB", size=(1, 1), color=(128, 128, 128)))
+    image = np.zeros((1, 1, 3), dtype=np.uint8)
+    image[0, 0] = (128, 128, 128)
     out = adjust_dynamic_range(image, 1.0)
-    assert out.getpixel((0, 0)) == (128, 128, 128)
+    assert tuple(out[0, 0]) == (128, 128, 128)
 
 
 def test_render_pipeline_and_save(tmp_path: Path) -> None:
@@ -78,6 +82,7 @@ def test_invalid_params_raise(tmp_path: Path, kwargs: dict) -> None:
 
 
 def test_adjust_dynamic_range_smoke_rgb() -> None:
-    image = cv2.CVImage(Image.new("RGB", size=(1, 1), color=(128, 128, 128)))
+    image = np.zeros((1, 1, 3), dtype=np.uint8)
+    image[0, 0] = (128, 128, 128)
     out = adjust_dynamic_range(image, 2.2)
     assert out is not None

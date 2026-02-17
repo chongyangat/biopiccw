@@ -3,13 +3,20 @@ import os
 import subprocess
 import sys
 
-from PIL import Image
+import pytest
+
+cv2 = pytest.importorskip("cv2")
+np = pytest.importorskip("numpy")
+pytest.importorskip("skimage")
 
 
 def test_run_user_image_script_with_temp_image(tmp_path: Path) -> None:
     image_path = tmp_path / "test.jpg"
     output_path = tmp_path / "out.jpg"
-    Image.new("RGB", (16, 12), color=(100, 120, 140)).save(image_path)
+
+    image = np.zeros((12, 16, 3), dtype=np.uint8)
+    image[:, :] = (100, 120, 140)
+    cv2.imwrite(str(image_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
 
     cmd = [
         sys.executable,

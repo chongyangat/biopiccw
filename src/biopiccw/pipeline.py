@@ -1,4 +1,4 @@
-"""Core rendering pipeline for visual-aid simulation."""
+"""Core rendering pipeline for visual-aid simulation (OpenCV + scikit-image)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ import cv2
 from skimage import exposure, filters
 
 
+# Step 1: 图像加载与输入
+# 功能：读取输入图像并统一转换为 RGB。
 def load_image(image_path: str | Path):
     """Load an image from disk as RGB."""
     image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
@@ -17,6 +19,8 @@ def load_image(image_path: str | Path):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+# Step 2: 图像放大（模拟放大设备）
+# 功能：按放大倍率调整图像尺寸。
 def apply_magnification(image, magnification_factor: float):
     """Resize an image according to magnification factor."""
     if magnification_factor <= 0:
@@ -27,6 +31,8 @@ def apply_magnification(image, magnification_factor: float):
     return cv2.resize(image, new_size, interpolation=cv2.INTER_LANCZOS4)
 
 
+# Step 3: 对比度增强
+# 功能：通过线性变换提升图像对比度。
 def enhance_contrast(image, contrast_factor: float):
     """Enhance image contrast via linear scaling."""
     if contrast_factor < 0:
@@ -35,6 +41,8 @@ def enhance_contrast(image, contrast_factor: float):
     return cv2.convertScaleAbs(image, alpha=contrast_factor, beta=0)
 
 
+# Step 4: 边缘锐化
+# 功能：使用 unsharp mask 提升边缘细节。
 def sharpen_image(image, sharpness_factor: float):
     """Sharpen image edges and details."""
     if sharpness_factor < 0:
@@ -49,6 +57,8 @@ def sharpen_image(image, sharpness_factor: float):
     )
 
 
+# Step 5: 动态范围调整
+# 功能：通过 gamma 校正模拟 HDR->LDR 映射。
 def adjust_dynamic_range(image, gamma: float):
     """Apply gamma correction to map dynamic range."""
     if gamma <= 0:
@@ -57,6 +67,8 @@ def adjust_dynamic_range(image, gamma: float):
     return exposure.adjust_gamma(image, gamma=gamma)
 
 
+# Step 6: 延迟模拟
+# 功能：模拟设备处理延迟。
 def simulate_latency(image, delay_seconds: float):
     """Simulate device latency."""
     if delay_seconds < 0:
@@ -75,6 +87,7 @@ def render_pipeline(
     delay_seconds: float,
 ):
     """Run the complete rendering pipeline and return the output image."""
+    # Pipeline sequence: Step 1 -> Step 6
     image = load_image(image_path)
     image = apply_magnification(image, magnification_factor)
     image = enhance_contrast(image, contrast_factor)
@@ -84,6 +97,8 @@ def render_pipeline(
     return image
 
 
+# Step 7: 输出保存
+# 功能：将 RGB 图像转回 BGR 并写入磁盘文件。
 def save_image(image, output_path: str | Path) -> None:
     """Save RGB image to disk."""
     output = Path(output_path)
