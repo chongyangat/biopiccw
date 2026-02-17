@@ -55,14 +55,15 @@ def apply_magnification(image, magnification_factor):
 
 ### 3.3 对比度增强（模拟设备对比度增强功能）
 
-通过 OpenCV 线性变换（`convertScaleAbs`）增强对比度，提高视觉清晰度。
+统一在 `skimage` 的归一化浮点域（[0,1]）进行对比度增强，避免跨库数值范围不一致。
 
 ```python
-import cv2
+import numpy as np
 
 
 def enhance_contrast(image, contrast_factor):
-    return cv2.convertScaleAbs(image, alpha=contrast_factor, beta=0)
+    enhanced = (image - 0.5) * contrast_factor + 0.5
+    return np.clip(enhanced, 0.0, 1.0)
 ```
 
 ---
@@ -83,7 +84,7 @@ def sharpen_image(image, sharpness_factor):
 
 ### 3.5 动态范围调整（模拟 HDR 到 LDR 转换）
 
-采用伽马校正（Gamma Correction）调整图像动态范围。
+采用伽马校正（Gamma Correction）调整图像动态范围（输入建议为 [0,1] 浮点）。
 
 ```python
 from skimage import exposure
@@ -213,6 +214,18 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ---
 
+## 跨库处理与归一化约定
+
+为避免你提到的“不同库处理时数值范围不一致”问题，项目采用以下统一规则：
+
+- **读入阶段（cv2）**：`cv2.imread` 读取后转为 RGB，并立即归一化到 `float32` 的 `[0,1]`。
+- **处理阶段（skimage-first）**：放大、对比度增强、锐化、Gamma 调整都在 `[0,1]` 浮点域完成。
+- **写出阶段（cv2）**：保存前把 `[0,1]` 转回 `uint8`，再 `cv2.imwrite`。
+
+这样可确保在切换不同库时不会出现“某一步按 0-255、某一步按 0-1”导致的结果偏差。
+
+---
+
 ## 7. 环境配置（Conda，推荐）
 
 为避免本地同名文件影响第三方库导入，建议使用全新 Conda 环境运行：
@@ -256,7 +269,7 @@ pytest
 2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
-说明：Notebook 现已内置基于 OpenCV + scikit-image 的完整渲染管线函数实现（`load_image` 到 `render_pipeline`），但仍以第三方库 `opencv` / `scikit-image` 的真实安装为准。
+说明：Notebook 与主代码均采用“skimage-first + 归一化 [0,1]”策略；仅在读写文件环节使用 OpenCV（`imread/imwrite/cvtColor`）。
 说明：Notebook 默认直接读取你提供的图片路径 `D:\\vrcontent\\biopiccw\\test.jpg`，并在运行前分别用 `cv2` 与 `skimage.io` 做读取检查。
 
 ## 10. 可扩展方向（建议）
