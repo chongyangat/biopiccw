@@ -1,30 +1,34 @@
-"""Core rendering pipeline for visual-aid simulation (skimage-first processing)."""
+"""Core rendering pipeline for visual-aid simulation (pure scikit-image)."""
 
 from __future__ import annotations
 
 import time
 from pathlib import Path
 
-import cv2
 import numpy as np
-from skimage import exposure, filters, transform, util
+from skimage import exposure, filters, io, transform, util
 
 
 # Step 1: 图像加载与输入
-# 功能：读取输入图像并转换为 RGB float32（范围 [0, 1]）。
+# 功能：使用 skimage 读取输入图像并转换为 RGB float32（范围 [0, 1]）。
 def load_image(image_path: str | Path):
-    """Load an image from disk as normalized RGB float32 in [0, 1]."""
-    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+    """Load image as normalized RGB float32 in [0, 1] using skimage."""
+    image = io.imread(str(image_path))
     if image is None:
         raise FileNotFoundError(f"Cannot read image: {image_path}")
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # 统一为 3 通道 RGB
+    if image.ndim == 2:
+        image = np.stack([image, image, image], axis=-1)
+    elif image.ndim == 3 and image.shape[2] == 4:
+        image = image[:, :, :3]
+
     return util.img_as_float32(image)
 
 
 # Step 2: 图像放大（模拟放大设备）
 # 功能：按放大倍率调整图像尺寸（skimage.transform.resize）。
 def apply_magnification(image, magnification_factor: float):
-    """Resize an image according to magnification factor."""
     if magnification_factor <= 0:
         raise ValueError("magnification_factor must be > 0")
 
@@ -42,9 +46,8 @@ def apply_magnification(image, magnification_factor: float):
 
 
 # Step 3: 对比度增强
-# 功能：线性对比度增强（以 0.5 为中心进行缩放，保持 [0,1]）。
+# 功能：线性对比度增强（以 0.5 为中心缩放，保持 [0,1]）。
 def enhance_contrast(image, contrast_factor: float):
-    """Enhance image contrast in normalized [0, 1] domain."""
     if contrast_factor < 0:
         raise ValueError("contrast_factor must be >= 0")
 
@@ -55,7 +58,6 @@ def enhance_contrast(image, contrast_factor: float):
 # Step 4: 边缘锐化
 # 功能：使用 unsharp mask 提升边缘细节（输入输出均为 [0,1]）。
 def sharpen_image(image, sharpness_factor: float):
-    """Sharpen image edges and details."""
     if sharpness_factor < 0:
         raise ValueError("sharpness_factor must be >= 0")
 
@@ -72,7 +74,6 @@ def sharpen_image(image, sharpness_factor: float):
 # Step 5: 动态范围调整
 # 功能：通过 gamma 校正模拟 HDR->LDR 映射（基于 [0,1]）。
 def adjust_dynamic_range(image, gamma: float):
-    """Apply gamma correction to map dynamic range."""
     if gamma <= 0:
         raise ValueError("gamma must be > 0")
 
@@ -83,7 +84,6 @@ def adjust_dynamic_range(image, gamma: float):
 # Step 6: 延迟模拟
 # 功能：模拟设备处理延迟。
 def simulate_latency(image, delay_seconds: float):
-    """Simulate device latency."""
     if delay_seconds < 0:
         raise ValueError("delay_seconds must be >= 0")
 
@@ -91,6 +91,7 @@ def simulate_latency(image, delay_seconds: float):
     return image
 
 
+# Step 7: 串联渲染管线
 def render_pipeline(
     image_path: str | Path,
     magnification_factor: float,
@@ -99,8 +100,6 @@ def render_pipeline(
     gamma: float,
     delay_seconds: float,
 ):
-    """Run the complete rendering pipeline and return normalized RGB float image."""
-    # Pipeline sequence: Step 1 -> Step 6
     image = load_image(image_path)
     image = apply_magnification(image, magnification_factor)
     image = enhance_contrast(image, contrast_factor)
@@ -110,15 +109,11 @@ def render_pipeline(
     return image
 
 
-# Step 7: 输出保存
-# 功能：将 [0,1] RGB float 转为 uint8 并写入磁盘（写盘环节使用 cv2）。
+# Step 8: 输出保存
+# 功能：将 [0,1] RGB float 转为 uint8 并使用 skimage.io.imsave 写盘。
 def save_image(image, output_path: str | Path) -> None:
-    """Save normalized RGB image to disk as uint8."""
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     image_u8 = util.img_as_ubyte(np.clip(image, 0.0, 1.0))
-    bgr = cv2.cvtColor(image_u8, cv2.COLOR_RGB2BGR)
-    ok = cv2.imwrite(str(output), bgr)
-    if not ok:
-        raise IOError(f"Failed to save image: {output}")
+    io.imsave(str(output), image_u8)

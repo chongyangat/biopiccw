@@ -1,11 +1,10 @@
-"""Run a direct read test for a user-provided 3-channel JPG using cv2/skimage."""
+"""Run a direct read test for a user-provided 3-channel JPG using skimage."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-import cv2
 from skimage import io
 
 from biopiccw.pipeline import render_pipeline, save_image
@@ -14,31 +13,20 @@ DEFAULT_IMAGE = r"D:\vrcontent\biopiccw\test.jpg"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Read and test user image with cv2/skimage")
+    parser = argparse.ArgumentParser(description="Read and test user image with skimage")
     parser.add_argument("--image", default=DEFAULT_IMAGE, help="Input image path")
-    parser.add_argument(
-        "--output",
-        default="user_test_output.jpg",
-        help="Output path for rendered result",
-    )
+    parser.add_argument("--output", default="user_test_output.jpg", help="Output path")
     args = parser.parse_args()
 
     image_path = Path(args.image)
     if not image_path.exists():
-        raise FileNotFoundError(
-            f"Image not found: {image_path}. Please check your path or mount the file into this environment."
-        )
+        raise FileNotFoundError(f"Image not found: {image_path}")
 
-    img_cv2 = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-    if img_cv2 is None:
-        raise RuntimeError(f"cv2.imread failed for {image_path}")
-
-    img_ski = io.imread(str(image_path))
-    if img_ski is None:
+    img = io.imread(str(image_path))
+    if img is None:
         raise RuntimeError(f"skimage.io.imread failed for {image_path}")
 
-    print("cv2 read success, shape:", getattr(img_cv2, "shape", None))
-    print("skimage read success, shape:", getattr(img_ski, "shape", None))
+    print("skimage read success, shape:", getattr(img, "shape", None))
 
     rendered = render_pipeline(
         image_path=image_path,

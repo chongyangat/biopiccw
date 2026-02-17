@@ -2,36 +2,31 @@ from pathlib import Path
 
 import pytest
 
-cv2 = pytest.importorskip("cv2")
 np = pytest.importorskip("numpy")
 pytest.importorskip("skimage")
+from skimage import io
 
-from biopiccw.pipeline import (
-    adjust_dynamic_range,
-    apply_magnification,
-    render_pipeline,
-    save_image,
-)
+from biopiccw.pipeline import adjust_dynamic_range, apply_magnification, render_pipeline, save_image
 
 
 def make_test_image(path: Path, size=(20, 10), color=(120, 80, 40)) -> None:
     h, w = size[1], size[0]
     image = np.zeros((h, w, 3), dtype=np.uint8)
     image[:, :] = color
-    cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    io.imsave(str(path), image)
 
 
 def test_apply_magnification_changes_size() -> None:
-    image = np.zeros((10, 10, 3), dtype=np.uint8)
+    image = np.zeros((10, 10, 3), dtype=np.float32)
     out = apply_magnification(image, 1.5)
     assert out.shape[:2] == (15, 15)
 
 
 def test_adjust_dynamic_range_gamma_identity_approx() -> None:
-    image = np.zeros((1, 1, 3), dtype=np.uint8)
-    image[0, 0] = (128, 128, 128)
+    image = np.zeros((1, 1, 3), dtype=np.float32)
+    image[0, 0] = (128 / 255.0, 128 / 255.0, 128 / 255.0)
     out = adjust_dynamic_range(image, 1.0)
-    assert tuple(out[0, 0]) == (128, 128, 128)
+    assert tuple((out[0, 0] * 255).astype(int)) == (128, 128, 128)
 
 
 def test_render_pipeline_and_save(tmp_path: Path) -> None:
@@ -49,6 +44,8 @@ def test_render_pipeline_and_save(tmp_path: Path) -> None:
     )
 
     assert output.shape[:2] == (20, 40)
+    assert output.dtype == np.float32
+    assert output.min() >= 0.0 and output.max() <= 1.0
     save_image(output, output_path)
     assert output_path.exists()
 
@@ -79,10 +76,3 @@ def test_invalid_params_raise(tmp_path: Path, kwargs: dict) -> None:
 
     with pytest.raises(ValueError):
         render_pipeline(**params)
-
-
-def test_adjust_dynamic_range_smoke_rgb() -> None:
-    image = np.zeros((1, 1, 3), dtype=np.uint8)
-    image[0, 0] = (128, 128, 128)
-    out = adjust_dynamic_range(image, 2.2)
-    assert out is not None

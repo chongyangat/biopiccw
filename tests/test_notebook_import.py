@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("cv2")
 pytest.importorskip("skimage")
 
 

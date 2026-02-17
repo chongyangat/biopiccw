@@ -5,9 +5,9 @@ import sys
 
 import pytest
 
-cv2 = pytest.importorskip("cv2")
 np = pytest.importorskip("numpy")
 pytest.importorskip("skimage")
+from skimage import io
 
 
 def test_run_user_image_script_with_temp_image(tmp_path: Path) -> None:
@@ -16,7 +16,7 @@ def test_run_user_image_script_with_temp_image(tmp_path: Path) -> None:
 
     image = np.zeros((12, 16, 3), dtype=np.uint8)
     image[:, :] = (100, 120, 140)
-    cv2.imwrite(str(image_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    io.imsave(str(image_path), image)
 
     cmd = [
         sys.executable,

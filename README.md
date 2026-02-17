@@ -25,15 +25,16 @@
 
 ### 3.1 图像加载与输入
 
-使用 OpenCV（`cv2`）加载输入图像，作为后续渲染处理的起点。
+使用 `skimage.io.imread` 加载输入图像，作为渲染处理起点，并归一化到 `[0,1]`。
 
 ```python
-import cv2
+from skimage import io
+import numpy as np
 
 
 def load_image(image_path):
-    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = io.imread(image_path)
+    return image.astype(np.float32) / 255.0
 ```
 
 ---
@@ -46,10 +47,10 @@ def load_image(image_path):
 def apply_magnification(image, magnification_factor):
     height, width = image.shape[:2]
     new_size = (int(width * magnification_factor), int(height * magnification_factor))
-    return cv2.resize(image, new_size, interpolation=cv2.INTER_LANCZOS4)
+    return transform.resize(image, (new_size[1], new_size[0], image.shape[2]), preserve_range=True)
 ```
 
-> 说明：OpenCV 中 `resize` 的目标尺寸顺序为 `(width, height)`。
+> 说明：统一在 `[0,1]` 浮点域处理，避免跨库数值范围不一致。
 
 ---
 
@@ -160,8 +161,8 @@ def render_pipeline(
 
 ```python
 def save_image(image, output_path):
-    bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(output_path, bgr)
+    image_u8 = (np.clip(image, 0.0, 1.0) * 255).astype("uint8")
+    io.imsave(output_path, image_u8)
 ```
 
 ---
@@ -208,9 +209,9 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ## 常见问题排查
 
-- 报错：`ModuleNotFoundError: No module named cv2` 或 `No module named skimage`  
-  原因：当前 Python 环境未安装 OpenCV / scikit-image。  
-  处理：安装依赖后重试，例如 `pip install opencv-python scikit-image`。
+- 报错：`ModuleNotFoundError: No module named skimage`  
+  原因：当前 Python 环境未安装 scikit-image。  
+  处理：安装依赖后重试，例如 `pip install scikit-image numpy`。
 
 ---
 
@@ -218,9 +219,9 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 为避免你提到的“不同库处理时数值范围不一致”问题，项目采用以下统一规则：
 
-- **读入阶段（cv2）**：`cv2.imread` 读取后转为 RGB，并立即归一化到 `float32` 的 `[0,1]`。
-- **处理阶段（skimage-first）**：放大、对比度增强、锐化、Gamma 调整都在 `[0,1]` 浮点域完成。
-- **写出阶段（cv2）**：保存前把 `[0,1]` 转回 `uint8`，再 `cv2.imwrite`。
+- **读入阶段（skimage）**：`skimage.io.imread` 读取后立即归一化到 `float32` 的 `[0,1]`。
+- **处理阶段（skimage）**：放大、对比度增强、锐化、Gamma 调整都在 `[0,1]` 浮点域完成。
+- **写出阶段（skimage）**：保存前把 `[0,1]` 转回 `uint8`，再 `skimage.io.imsave`。
 
 这样可确保在切换不同库时不会出现“某一步按 0-255、某一步按 0-1”导致的结果偏差。
 
@@ -233,14 +234,14 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 ```bash
 conda create -n visual_sim python=3.10 -y
 conda activate visual_sim
-conda install -c conda-forge opencv scikit-image numpy pytest -y
+conda install -c conda-forge scikit-image numpy pytest -y
 pip install -e .
 ```
 
 验证导入：
 
 ```bash
-python -c "import cv2, skimage, numpy; print(cv2.__version__)"
+python -c "import skimage, numpy; print(skimage.__version__)"
 ```
 
 ---
@@ -269,8 +270,8 @@ pytest
 2. Notebook 会自动向上查找项目根目录并注入 `PROJECT_ROOT` 与 `src` 到 `sys.path`。  
 3. 按顺序运行单元格，即可完成示例图像生成、渲染、保存与参数校验。
 
-说明：Notebook 与主代码均采用“skimage-first + 归一化 [0,1]”策略；仅在读写文件环节使用 OpenCV（`imread/imwrite/cvtColor`）。
-说明：Notebook 默认直接读取你提供的图片路径 `D:\\vrcontent\\biopiccw\\test.jpg`，并在运行前分别用 `cv2` 与 `skimage.io` 做读取检查。
+说明：Notebook 与主代码均采用“skimage-first + 归一化 [0,1]”策略；读取、处理与保存均统一使用 scikit-image。
+说明：Notebook 默认直接读取你提供的图片路径 `D:\\vrcontent\\biopiccw\\test.jpg`，并在运行前用 `skimage.io` 做读取检查。
 
 ## 10. 可扩展方向（建议）
 
@@ -282,7 +283,7 @@ pytest
 ---
 
 
-## 11. 使用你自己的测试图片（cv2/skimage 直接读取）
+## 11. 使用你自己的测试图片（skimage 直接读取）
 
 可直接运行下面命令测试你提供的三通道 JPG：
 
@@ -290,5 +291,5 @@ pytest
 PYTHONPATH=.:src python scripts/run_user_image_test.py --image "D:\\vrcontent\\biopiccw\\test.jpg" --output "user_test_output.jpg"
 ```
 
-脚本会分别用 `cv2.imread` 与 `skimage.io.imread` 读取图像，然后执行完整渲染管线并保存输出。
+脚本会用 `skimage.io.imread` 读取图像，然后执行完整渲染管线并保存输出。
 

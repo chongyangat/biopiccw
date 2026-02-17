@@ -9,5 +9,4 @@ def test_notebook_uses_user_provided_windows_path() -> None:
 
     source = "".join(nb["cells"][6]["source"])
     assert r"D:\\vrcontent\\biopiccw\\test.jpg" in source
-    assert "cv2.imread" in source
     assert "io.imread" in source
