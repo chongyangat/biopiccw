@@ -9,6 +9,16 @@ import numpy as np
 from skimage import exposure, filters, io, transform, util
 
 
+def normalize_to_unit_range(arr: np.ndarray) -> np.ndarray:
+    """Min-max normalize array to [0, 1]."""
+    arr = arr.astype(np.float32)
+    min_v = float(arr.min())
+    max_v = float(arr.max())
+    if max_v == min_v:
+        return np.zeros_like(arr, dtype=np.float32)
+    return (arr - min_v) / (max_v - min_v)
+
+
 # Step 1: 图像加载与输入
 # 功能：使用 skimage 读取输入图像并转换为 RGB float32（范围 [0, 1]）。
 def load_image(image_path: str | Path):
@@ -23,7 +33,8 @@ def load_image(image_path: str | Path):
     elif image.ndim == 3 and image.shape[2] == 4:
         image = image[:, :, :3]
 
-    return util.img_as_float32(image)
+    image = util.img_as_float32(image)
+    return normalize_to_unit_range(image)
 
 
 # Step 2: 图像放大（模拟放大设备）
@@ -42,7 +53,7 @@ def apply_magnification(image, magnification_factor: float):
         anti_aliasing=True,
         preserve_range=True,
     )
-    return np.clip(resized.astype(np.float32), 0.0, 1.0)
+    return normalize_to_unit_range(resized)
 
 
 # Step 3: 对比度增强
@@ -52,7 +63,7 @@ def enhance_contrast(image, contrast_factor: float):
         raise ValueError("contrast_factor must be >= 0")
 
     enhanced = (image - 0.5) * contrast_factor + 0.5
-    return np.clip(enhanced, 0.0, 1.0).astype(np.float32)
+    return normalize_to_unit_range(enhanced)
 
 
 # Step 4: 边缘锐化
@@ -68,7 +79,7 @@ def sharpen_image(image, sharpness_factor: float):
         preserve_range=True,
         channel_axis=-1,
     )
-    return np.clip(sharpened, 0.0, 1.0).astype(np.float32)
+    return normalize_to_unit_range(sharpened)
 
 
 # Step 5: 动态范围调整
@@ -78,7 +89,7 @@ def adjust_dynamic_range(image, gamma: float):
         raise ValueError("gamma must be > 0")
 
     adjusted = exposure.adjust_gamma(image, gamma=gamma)
-    return np.clip(adjusted, 0.0, 1.0).astype(np.float32)
+    return normalize_to_unit_range(adjusted)
 
 
 # Step 6: 延迟模拟
@@ -115,5 +126,5 @@ def save_image(image, output_path: str | Path) -> None:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    image_u8 = util.img_as_ubyte(np.clip(image, 0.0, 1.0))
+    image_u8 = util.img_as_ubyte(normalize_to_unit_range(image))
     io.imsave(str(output), image_u8)

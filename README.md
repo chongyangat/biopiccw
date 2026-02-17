@@ -64,7 +64,7 @@ import numpy as np
 
 def enhance_contrast(image, contrast_factor):
     enhanced = (image - 0.5) * contrast_factor + 0.5
-    return np.clip(enhanced, 0.0, 1.0)
+    return (enhanced - enhanced.min()) / (enhanced.max() - enhanced.min())
 ```
 
 ---
@@ -216,6 +216,14 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 ---
 
 ## 跨库处理与归一化约定
+
+归一化采用最小-最大归一化（Min-Max）：
+
+```python
+normalized_arr = (arr - arr.min()) / (arr.max() - arr.min())
+```
+
+当 `arr.max() == arr.min()` 时，代码中会回退为全零数组，避免除零错误。
 
 为避免你提到的“不同库处理时数值范围不一致”问题，项目采用以下统一规则：
 
