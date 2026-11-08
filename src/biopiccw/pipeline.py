@@ -10,28 +10,33 @@ from skimage import exposure, filters, io, transform, util
 
 
 def normalize_to_unit_range(arr: np.ndarray) -> np.ndarray:
-    """Min-max normalize array to [0, 1]."""
-    arr = arr.astype(np.float32)
-    min_v = float(arr.min())
-    max_v = float(arr.max())
-    if max_v == min_v:
-        return np.zeros_like(arr, dtype=np.float32)
-    return (arr - min_v) / (max_v - min_v)
+    """Convert an array to float32 and clip values to the [0, 1] processing range.
+
+    The helper intentionally preserves absolute brightness and contrast. It does not
+    rescale each image independently, because per-image min-max normalization would
+    make the pipeline parameters ineffective and turn constant images black.
+    """
+    arr = np.asarray(arr, dtype=np.float32)
+    if not np.isfinite(arr).all():
+        raise ValueError("image contains non-finite values")
+    return np.clip(arr, 0.0, 1.0)
 
 
 # Step 1: 图像加载与输入
 # 功能：使用 skimage 读取输入图像并转换为 RGB float32（范围 [0, 1]）。
-def load_image(image_path: str | Path):
-    """Load image as normalized RGB float32 in [0, 1] using skimage."""
+def load_image(image_path: str | Path) -> np.ndarray:
+    """Load an image as normalized RGB float32 in [0, 1] using scikit-image."""
     image = io.imread(str(image_path))
-    if image is None:
-        raise FileNotFoundError(f"Cannot read image: {image_path}")
 
     # 统一为 3 通道 RGB
     if image.ndim == 2:
         image = np.stack([image, image, image], axis=-1)
-    elif image.ndim == 3 and image.shape[2] == 4:
+    elif image.ndim == 3 and image.shape[2] == 1:
+        image = np.repeat(image, 3, axis=2)
+    elif image.ndim == 3 and image.shape[2] >= 3:
         image = image[:, :, :3]
+    else:
+        raise ValueError(f"Unsupported image shape: {image.shape}")
 
     image = util.img_as_float32(image)
     return normalize_to_unit_range(image)
@@ -39,7 +44,7 @@ def load_image(image_path: str | Path):
 
 # Step 2: 图像放大（模拟放大设备）
 # 功能：按放大倍率调整图像尺寸（skimage.transform.resize）。
-def apply_magnification(image, magnification_factor: float):
+def apply_magnification(image: np.ndarray, magnification_factor: float) -> np.ndarray:
     if magnification_factor <= 0:
         raise ValueError("magnification_factor must be > 0")
 
@@ -47,7 +52,7 @@ def apply_magnification(image, magnification_factor: float):
     new_h = max(1, int(height * magnification_factor))
     new_w = max(1, int(width * magnification_factor))
     resized = transform.resize(
-        image,
+        normalize_to_unit_range(image),
         output_shape=(new_h, new_w, image.shape[2]),
         order=3,
         anti_aliasing=True,
@@ -58,22 +63,22 @@ def apply_magnification(image, magnification_factor: float):
 
 # Step 3: 对比度增强
 # 功能：线性对比度增强（以 0.5 为中心缩放，保持 [0,1]）。
-def enhance_contrast(image, contrast_factor: float):
+def enhance_contrast(image: np.ndarray, contrast_factor: float) -> np.ndarray:
     if contrast_factor < 0:
         raise ValueError("contrast_factor must be >= 0")
 
-    enhanced = (image - 0.5) * contrast_factor + 0.5
+    enhanced = (normalize_to_unit_range(image) - 0.5) * contrast_factor + 0.5
     return normalize_to_unit_range(enhanced)
 
 
 # Step 4: 边缘锐化
 # 功能：使用 unsharp mask 提升边缘细节（输入输出均为 [0,1]）。
-def sharpen_image(image, sharpness_factor: float):
+def sharpen_image(image: np.ndarray, sharpness_factor: float) -> np.ndarray:
     if sharpness_factor < 0:
         raise ValueError("sharpness_factor must be >= 0")
 
     sharpened = filters.unsharp_mask(
-        image,
+        normalize_to_unit_range(image),
         radius=1.0,
         amount=sharpness_factor,
         preserve_range=True,
@@ -84,17 +89,17 @@ def sharpen_image(image, sharpness_factor: float):
 
 # Step 5: 动态范围调整
 # 功能：通过 gamma 校正模拟 HDR->LDR 映射（基于 [0,1]）。
-def adjust_dynamic_range(image, gamma: float):
+def adjust_dynamic_range(image: np.ndarray, gamma: float) -> np.ndarray:
     if gamma <= 0:
         raise ValueError("gamma must be > 0")
 
-    adjusted = exposure.adjust_gamma(image, gamma=gamma)
+    adjusted = exposure.adjust_gamma(normalize_to_unit_range(image), gamma=gamma)
     return normalize_to_unit_range(adjusted)
 
 
 # Step 6: 延迟模拟
 # 功能：模拟设备处理延迟。
-def simulate_latency(image, delay_seconds: float):
+def simulate_latency(image: np.ndarray, delay_seconds: float) -> np.ndarray:
     if delay_seconds < 0:
         raise ValueError("delay_seconds must be >= 0")
 
@@ -110,7 +115,7 @@ def render_pipeline(
     sharpness_factor: float,
     gamma: float,
     delay_seconds: float,
-):
+) -> np.ndarray:
     image = load_image(image_path)
     image = apply_magnification(image, magnification_factor)
     image = enhance_contrast(image, contrast_factor)
@@ -122,7 +127,7 @@ def render_pipeline(
 
 # Step 8: 输出保存
 # 功能：将 [0,1] RGB float 转为 uint8 并使用 skimage.io.imsave 写盘。
-def save_image(image, output_path: str | Path) -> None:
+def save_image(image: np.ndarray, output_path: str | Path) -> None:
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
