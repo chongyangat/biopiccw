@@ -4,6 +4,14 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
+
+# Allow this script to run directly from a source checkout without requiring
+# an editable install or a shell-specific PYTHONPATH setting.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from skimage import io
 
