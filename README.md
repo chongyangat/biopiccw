@@ -217,13 +217,13 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ## 跨库处理与归一化约定
 
-归一化采用最小-最大归一化（Min-Max）：
+处理阶段保持原有亮度，只将数值裁剪到 `[0,1]`：
 
 ```python
-normalized_arr = (arr - arr.min()) / (arr.max() - arr.min())
+normalized_arr = np.clip(arr.astype(np.float32), 0.0, 1.0)
 ```
 
-当 `arr.max() == arr.min()` 时，代码中会回退为全零数组，避免除零错误。
+这样可以保留常量图像的亮度，并确保对比度与 Gamma 参数不会被后续的 Min-Max 重标定抵消。
 
 为避免你提到的“不同库处理时数值范围不一致”问题，项目采用以下统一规则：
 
