@@ -2,10 +2,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
-pytest.importorskip("skimage")
-
 
 def test_notebook_core_cell_runs_from_notebooks_cwd() -> None:
     repo_root = Path(__file__).resolve().parents[1]
