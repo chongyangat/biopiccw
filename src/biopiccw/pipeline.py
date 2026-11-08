@@ -10,13 +10,13 @@ from skimage import exposure, filters, io, transform, util
 
 
 def normalize_to_unit_range(arr: np.ndarray) -> np.ndarray:
-    """Min-max normalize array to [0, 1]."""
-    arr = arr.astype(np.float32)
-    min_v = float(arr.min())
-    max_v = float(arr.max())
-    if max_v == min_v:
-        return np.zeros_like(arr, dtype=np.float32)
-    return (arr - min_v) / (max_v - min_v)
+    """Convert an array to float32 values clipped to the [0, 1] image range.
+
+    This helper preserves constant images and their absolute brightness.  A
+    per-image min-max rescale would turn a uniform image black and would also
+    change the meaning of contrast and gamma parameters.
+    """
+    return np.clip(np.asarray(arr, dtype=np.float32), 0.0, 1.0)
 
 
 # Step 1: 图像加载与输入
