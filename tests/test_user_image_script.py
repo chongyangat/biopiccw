@@ -3,14 +3,12 @@ import os
 import subprocess
 import sys
 
-import pytest
-
-np = pytest.importorskip("numpy")
-pytest.importorskip("skimage")
+import numpy as np
 from skimage import io
 
 
 def test_run_user_image_script_with_temp_image(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
     image_path = tmp_path / "test.jpg"
     output_path = tmp_path / "out.jpg"
 
@@ -27,10 +25,12 @@ def test_run_user_image_script_with_temp_image(tmp_path: Path) -> None:
         str(output_path),
     ]
     env = os.environ.copy()
-    env["PYTHONPATH"] = ".:src"
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(repo_root), str(repo_root / "src"), env.get("PYTHONPATH", "")]
+    )
     result = subprocess.run(
         cmd,
-        cwd=Path(__file__).resolve().parents[1],
+        cwd=repo_root,
         env=env,
         capture_output=True,
         text=True,
