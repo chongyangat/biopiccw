@@ -44,10 +44,18 @@ def load_image(image_path):
 根据放大倍率调整图像尺寸。
 
 ```python
+from skimage import transform
+
+
 def apply_magnification(image, magnification_factor):
     height, width = image.shape[:2]
     new_size = (int(width * magnification_factor), int(height * magnification_factor))
-    return transform.resize(image, (new_size[1], new_size[0], image.shape[2]), preserve_range=True)
+    resized = transform.resize(
+        image,
+        (new_size[1], new_size[0], image.shape[2]),
+        preserve_range=True,
+    )
+    return np.clip(resized.astype(np.float32), 0.0, 1.0)
 ```
 
 > 说明：统一在 `[0,1]` 浮点域处理，避免跨库数值范围不一致。
@@ -64,7 +72,7 @@ import numpy as np
 
 def enhance_contrast(image, contrast_factor):
     enhanced = (image - 0.5) * contrast_factor + 0.5
-    return (enhanced - enhanced.min()) / (enhanced.max() - enhanced.min())
+    return np.clip(enhanced, 0.0, 1.0).astype(np.float32)
 ```
 
 ---
@@ -217,21 +225,13 @@ biopiccw-render --input input_scene.jpg --output output_image.jpg --magnificatio
 
 ## 跨库处理与归一化约定
 
-归一化采用最小-最大归一化（Min-Max）：
+为避免不同库处理时数值范围不一致，项目在整个管线中保持 `float32` 的 `[0,1]` 数值域：
 
-```python
-normalized_arr = (arr - arr.min()) / (arr.max() - arr.min())
-```
+- **读入阶段（skimage）**：`skimage.io.imread` 读取后使用 `util.img_as_float32` 转换，并裁剪到 `[0,1]`。
+- **处理阶段（skimage）**：放大、对比度增强、锐化和 Gamma 调整都只裁剪越界值，不对每张图像做 min-max 重标定，因此会保留输入亮度并让参数保持有效。
+- **写出阶段（skimage）**：保存前把 `[0,1]` 转回 `uint8`，再用 `skimage.io.imsave` 写盘。
 
-当 `arr.max() == arr.min()` 时，代码中会回退为全零数组，避免除零错误。
-
-为避免你提到的“不同库处理时数值范围不一致”问题，项目采用以下统一规则：
-
-- **读入阶段（skimage）**：`skimage.io.imread` 读取后立即归一化到 `float32` 的 `[0,1]`。
-- **处理阶段（skimage）**：放大、对比度增强、锐化、Gamma 调整都在 `[0,1]` 浮点域完成。
-- **写出阶段（skimage）**：保存前把 `[0,1]` 转回 `uint8`，再 `skimage.io.imsave`。
-
-这样可确保在切换不同库时不会出现“某一步按 0-255、某一步按 0-1”导致的结果偏差。
+这种约定能避免常量图像变黑，也能避免某一步按 0-255、某一步按 0-1 导致的结果偏差。
 
 ---
 
@@ -296,8 +296,8 @@ pytest
 可直接运行下面命令测试你提供的三通道 JPG：
 
 ```bash
-PYTHONPATH=.:src python scripts/run_user_image_test.py --image "D:\\vrcontent\\biopiccw\\test.jpg" --output "user_test_output.jpg"
+python scripts/run_user_image_test.py --image "D:\\vrcontent\\biopiccw\\test.jpg" --output "user_test_output.jpg"
 ```
 
-脚本会用 `skimage.io.imread` 读取图像，然后执行完整渲染管线并保存输出。
+脚本会用 `skimage.io.imread` 读取图像，然后执行完整渲染管线并保存输出。脚本会自动把仓库的 `src` 目录加入导入路径，因此可直接从源码 checkout 运行；也可以先执行 `pip install -e .` 后再运行。
 
