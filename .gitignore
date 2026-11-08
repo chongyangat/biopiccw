@@ -1,3 +1,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Generated image outputs
+notebooks/user_test_output.*
+user_test_output.*
